@@ -18,6 +18,11 @@ void help() {
   printf("  Press Enter to kill the selected process\n");
   printf("  Press q to quit\n");
   printf("---------------------------------------------\n");
+  printf("  Press 1 to toggle username\n");
+  printf("  Press 2 to toggle system processes\n");
+  printf("  Press 3 to toggle fancy mode\n");
+  printf("  Press 4 to toggle error ignoring\n");
+  printf("---------------------------------------------\n");
   exit(0);
 }
 
@@ -91,6 +96,22 @@ int main(int argc, char *argv[]) {
 
       case '/':
         handle_search();
+        break;
+
+      case '1':
+        no_username = !no_username;
+        break;
+
+      case '2':
+        hide_system_processes = !hide_system_processes;
+        break;
+
+      case '3':
+        dont_get_fancy = !dont_get_fancy;
+        break;
+
+      case '4':
+        ignore_errors = !ignore_errors;
         break;
 
       case 'n':
