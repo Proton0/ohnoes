@@ -5,10 +5,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libproc.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/sysctl.h>
 #include <ctype.h>
 #include <signal.h>
 
