@@ -8,7 +8,7 @@ macOS's Activity Monitor but without limitations and is a CLI tool
 - macOS
 
 you guys can make can port this to windows or any platform that supports ncurses, all the platform-specific code is in
-`platform.c`
+`process.c`
 
 ## Compilation
 requirements
