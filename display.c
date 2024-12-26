@@ -5,15 +5,38 @@
 int selected_index = 0;
 int top_index = 0;
 
-void display_processes() {
-  clear();
-  int max_y, max_x;
-  getmaxyx(stdscr, max_y, max_x);
-
+void displayHeader() {
   attron(A_BOLD);
   mvprintw(0, 0, "%-8s %-30s %s %s", "PID", "NAME", "USER", "SYSTEM");
   attroff(A_BOLD);
   mvprintw(1, 0, "------------------------------------------------------------");
+}
+
+void displayProcessRow(int row, int current, int should_highlight) {
+  const char *system_symbol = processes[current].system_process ? "Y" : "N";
+  const char *username = processes[current].username ? processes[current].username : "Unknown";
+  if (no_username) {
+    username = "    ";
+  }
+
+  if (should_highlight) attron(A_REVERSE);
+
+  mvprintw(row, 0, "%-8d %-30s %s %s",
+           processes[current].pid,
+           processes[current].name,
+           username,
+           system_symbol);
+
+  if (should_highlight) attroff(A_REVERSE);
+}
+
+void displayProcesses() {
+  clear();
+  int max_y;
+  int max_x;
+  getmaxyx(stdscr, max_y, max_x);
+
+  displayHeader();
 
   int visible_rows = max_y - 3;
 
@@ -31,15 +54,8 @@ void display_processes() {
       continue;
     }
 
-    const char *system_symbol = processes[current].system_process ? "Y" : "N";
-    const char *username = processes[current].username ? processes[current].username : "Unknown";
-    if (no_username) {
-      username = "    ";
-    }
-    int should_highlight = 0;
-    if (current == selected_index) {
-      should_highlight = 1;
-    } else if (is_searching && strlen(search_term) > 0) {
+    int should_highlight = (current == selected_index);
+    if (!should_highlight && is_searching && strlen(search_term) > 0) {
       char pid_str[32];
       snprintf(pid_str, sizeof(pid_str), "%d", processes[current].pid);
       if (strcasestr_custom(processes[current].name, search_term) ||
@@ -48,15 +64,8 @@ void display_processes() {
       }
     }
 
-    if (should_highlight) attron(A_REVERSE);
+    displayProcessRow(displayed_rows + 2, current, should_highlight);
 
-    mvprintw(displayed_rows + 2, 0, "%-8d %-30s %s %s",
-             processes[current].pid,
-             processes[current].name,
-             username,
-             system_symbol);
-
-    if (should_highlight) attroff(A_REVERSE);
     if (is_searching && !should_highlight) attroff(A_BOLD);
 
     displayed_rows++;

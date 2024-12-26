@@ -6,7 +6,8 @@ char search_term[SEARCH_MAX_LEN] = "";
 int is_searching = 0;
 
 void handle_search() {
-  int max_y, max_x;
+  int max_x;
+  int max_y;
   getmaxyx(stdscr, max_y, max_x);
 
   move(max_y - 1, 0);
@@ -22,9 +23,9 @@ void handle_search() {
   memset(search_term, 0, SEARCH_MAX_LEN);
 
   while ((ch = getch()) != ERR) {
-    if (ch == 10) {
-      break;
-    } else if (ch == 27) {
+
+    if (ch == 10) { break; }
+    else if (ch == 27) {
       clear_search();
       break;
     } else if (ch == KEY_BACKSPACE || ch == 127) {
@@ -34,7 +35,7 @@ void handle_search() {
         move(max_y - 1, pos + 1);
       }
     } else if (pos < SEARCH_MAX_LEN - 1 && isprint(ch)) {
-      search_term[pos++] = ch;
+      search_term[pos++] = (char) ch;
       search_term[pos] = '\0';
     }
     refresh();
@@ -87,8 +88,8 @@ int find_next_match(int start_index, int direction) {
 int strcasestr_custom(const char *haystack, const char *needle) {
   char *h = strdup(haystack);
   char *n = strdup(needle);
-  for (int i = 0; h[i]; i++) h[i] = tolower(h[i]);
-  for (int i = 0; n[i]; i++) n[i] = tolower(n[i]);
+  for (int i = 0; h[i]; i++) h[i] = (char) tolower(h[i]);
+  for (int i = 0; n[i]; i++) n[i] = (char) tolower(n[i]);
   int result = strstr(h, n) != NULL;
   free(h);
   free(n);

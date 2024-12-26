@@ -23,7 +23,8 @@ struct ProcessInfo {
 };
 
 void get_processes();
-int process_pid(pid_t pid);
+
+int terminate_pid(pid_t pid);
 extern struct ProcessInfo processes[MAX_PROCESSES];
 extern int process_count;
 extern char ERROR_MSG[256];

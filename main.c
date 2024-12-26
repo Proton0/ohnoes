@@ -28,38 +28,36 @@ void help() {
 
 int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-s") == 0) {
-      hide_system_processes = true;
+    switch (argv[i][1]) {
+      case 's':
+        hide_system_processes = true;
+        break;
+      case 'u':
+        no_username = true;
+        break;
+      case 'n':
+        dont_get_fancy = true;
+        break;
+      case 'i':
+        ignore_errors = true;
+        break;
+      case 'h':
+        help();
+        break;
+      default:
+        if (strcmp(argv[i], "--system") == 0) {
+          hide_system_processes = true;
+        } else if (strcmp(argv[i], "--nouser") == 0) {
+          no_username = true;
+        } else if (strcmp(argv[i], "--nofancy") == 0) {
+          dont_get_fancy = true;
+        } else if (strcmp(argv[i], "--ignore") == 0) {
+          ignore_errors = true;
+        } else if (strcmp(argv[i], "--help") == 0) {
+          help();
+        }
+        break;
     }
-    if (strcmp(argv[i], "--system") == 0) {
-      hide_system_processes = true;
-    }
-    if (strcmp(argv[i], "-u") == 0) {
-      no_username = true;
-    }
-    if (strcmp(argv[i], "--nouser") == 0) {
-      no_username = true;
-    }
-    if (strcmp(argv[i], "-n") == 0) {
-      dont_get_fancy = true;
-    }
-    if (strcmp(argv[i], "--nofancy") == 0) {
-      dont_get_fancy = true;
-    }
-    if (strcmp(argv[i], "-i") == 0) {
-      ignore_errors = true;
-    }
-    if (strcmp(argv[i], "--ignore") == 0) {
-      ignore_errors = true;
-    }
-    if (strcmp(argv[i], "-h") == 0) {
-      help();
-    }
-    if (strcmp(argv[i], "--help") == 0) {
-      help();
-      exit(0);
-    }
-
   }
 
 
@@ -67,13 +65,14 @@ int main(int argc, char *argv[]) {
   cbreak();
   noecho();
   keypad(stdscr, TRUE);
-
+  timeout(500);
 
   get_processes();
 
   int ch;
-  while (1) {
-    display_processes();
+
+  while (1) { // Main loop
+    displayProcesses();
     ch = getch();
 
     switch (ch) {
@@ -129,10 +128,10 @@ int main(int argc, char *argv[]) {
         break;
 
       case 10:
-        display_processes();
+        displayProcesses();
         refresh();
 
-        int result = process_pid(processes[selected_index].pid);
+        int result = terminate_pid(processes[selected_index].pid);
         if (result == 1) {
           handle_error(ERROR_MSG);
         } else if (result == 0) {
@@ -143,9 +142,13 @@ int main(int argc, char *argv[]) {
       case 'q':
         endwin();
         return 0;
-    }
-  }
 
-  endwin();
-  return 0;
+      default:
+        get_processes();
+        displayProcesses();
+        refresh();
+        break;
+    }
+
+  }
 }

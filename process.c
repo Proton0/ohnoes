@@ -4,7 +4,7 @@
 #include <mach/mach_error.h>
 #include "display.h"
 
-// Define external variables
+// External variables
 struct ProcessInfo processes[MAX_PROCESSES];
 int process_count = 0;
 char ERROR_MSG[256];
@@ -39,14 +39,14 @@ void get_processes() {
     return;
   }
 
-  process_count = size / sizeof(struct kinfo_proc);
+  process_count = (int) size / sizeof(struct kinfo_proc);
   if (process_count > MAX_PROCESSES) process_count = MAX_PROCESSES;
 
   for (int i = 0; i < process_count; i++) {
     processes[i].pid = procs[i].kp_proc.p_pid;
     proc_name(procs[i].kp_proc.p_pid, processes[i].name, sizeof(processes[i].name));
 
-    struct passwd *pw = getpwuid(procs[i].kp_eproc.e_ucred.cr_uid);
+    struct passwd const *pw = getpwuid_r(procs[i].kp_eproc.e_ucred.cr_uid);
     if (pw) {
       processes[i].username = strdup(pw->pw_name);
       if (strcmp(pw->pw_name, "root") == 0) {
@@ -62,7 +62,8 @@ void get_processes() {
 #ifndef __linux__
     if (!dont_get_fancy) {
       // In macOS, processes with blank names are most likely services or system processes
-      // Most of the time, the username is the service name (i think) but there are just processes with no name but 100%
+      // Most of the time,
+      // the username is the service name (I think), but there are just processes with no name but 100%
       // they're owned by root
       if (strlen(processes[i].name) == 0) {
         processes[i].system_process = true;
@@ -71,12 +72,12 @@ void get_processes() {
           processes[i].name[sizeof(processes[i].name) - 1] = '\0'; // Ensure null-termination
           processes[i].username = strdup("root");
         }
-        // If the process is owned by root and has no name, then we cant really anymore information about it
+        // If the process is owned by root and has no name, then just use the binary name
       }
 
-      // for processes that don't have a name, we can just use the binary path
+      // for processes that don't have a name, we can just use the binary name
       if (strlen(processes[i].name) == 0) {
-        // Get the process's binary
+        // Get the process's file
         char path[PROC_PIDPATHINFO_MAXSIZE];
         int ret = proc_pidpath(procs[i].kp_proc.p_pid, path, sizeof(path));
         if (ret <= 0) {
@@ -89,7 +90,7 @@ void get_processes() {
 
           continue;
         }
-        // Get the name of the binary
+        // Get the name of the process
         char *name = strrchr(path, '/');
         if (name) {
           name++;
@@ -103,47 +104,55 @@ void get_processes() {
   free(procs);
 }
 
-int process_pid(pid_t pid) {
+int terminate_pid(pid_t pid) {
+  // First, try graceful termination
+  if (kill(pid, SIGTERM) == 0) {
+    // Give the process a chance to clean up
+    usleep(100000); // 100ms
 
-
-  int attempts = 0;
-  while (attempts < 500) {
-    if (kill(pid, SIGKILL) == 0) {
-      return 0;
-    }
-    if (kill(pid, SIGTERM) == 0) {
-      return 0;
-    }
-
+    // Check if terminated
     if (kill(pid, 0) == -1 && errno == ESRCH) {
       return 0;
     }
-
-    attempts++;
   }
 
+  // Then try SIGKILL
+  if (kill(pid, SIGKILL) == 0) {
+    return 0;
+  }
+
+  // Platform specific termination as last resort
 #ifdef __linux__
-  snprintf(ERROR_MSG, sizeof(ERROR_MSG), "Failed to terminate process %d", pid);
+  char proc_path[32];
+  snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
+
+  // Check if process still exists
+  if (access(proc_path, F_OK) == -1) {
+    return 0;
+  }
+
+  // Process still running - log failure
+  snprintf(ERROR_MSG, sizeof(ERROR_MSG),
+           "Failed to terminate process %d after standard signals", pid);
+  return 1;
+
+#else // macOS
+  // I don't think this works if System Integrity Protection is enabled,
+  // But it is worth a shot
+  mach_port_t task;
+  kern_return_t kr = task_for_pid(mach_task_self(), pid, &task);
+
+  if (kr == KERN_SUCCESS) {
+    kr = task_terminate(task);
+    mach_port_deallocate(mach_task_self(), task);
+
+    if (kr == KERN_SUCCESS) {
+      return 0;
+    }
+  }
+
+  snprintf(ERROR_MSG, sizeof(ERROR_MSG),
+           "Failed to terminate process %d via task_terminate", pid);
   return 1;
 #endif
-
-#ifndef __linux__
-  mach_port_t task;
-  kern_return_t kr;
-
-  kr = task_for_pid(mach_task_self(), pid, &task);
-  if (kr != KERN_SUCCESS) {
-    // This normally means we don't have permission to kill the process
-    snprintf(ERROR_MSG, sizeof(ERROR_MSG), "Failed to get task port for process %d (normally means you dont have permission to kill the process)", pid);
-    return 1;
-  }
-
-  kr = task_terminate(task);
-  if (kr != KERN_SUCCESS) {
-    snprintf(ERROR_MSG, sizeof(ERROR_MSG), "Failed to terminate process thru task_terminate %d", pid);
-    return 1;
-  }
-#endif
-
-  return 0;
 }
