@@ -16,6 +16,7 @@ bool hide_system_processes = false;
 struct ProcessInfo processes[MAX_PROCESSES];
 char ERROR_MSG[256];
 
+
 void get_processes() {
   int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
   size_t size;
@@ -58,7 +59,7 @@ void get_processes() {
       processes[i].system_process = false;
     }
 
-#ifndef LINUX_SUPPORT
+#ifndef __linux__
     if (!dont_get_fancy) {
       // In macOS, processes with blank names are most likely services or system processes
       // Most of the time, the username is the service name (i think) but there are just processes with no name but 100%
@@ -73,13 +74,13 @@ void get_processes() {
         // If the process is owned by root and has no name, then we cant really anymore information about it
       }
 
-      // for processes that dont have a name, we can just use the binary path
+      // for processes that don't have a name, we can just use the binary path
       if (strlen(processes[i].name) == 0) {
         // Get the process's binary
         char path[PROC_PIDPATHINFO_MAXSIZE];
         int ret = proc_pidpath(procs[i].kp_proc.p_pid, path, sizeof(path));
         if (ret <= 0) {
-          // If we cant get the path, then we cant get the name
+          // If we can't get the path, then we cant get the name
           // so we skip unless PID is 0
           if (procs[i].kp_proc.p_pid == 0) { // Only kernel_task has PID 0
             strncpy(processes[i].name, "kernel_task", sizeof(processes[i].name) - 1);
@@ -121,12 +122,12 @@ int process_pid(pid_t pid) {
     attempts++;
   }
 
-#ifdef LINUX_SUPPORT
+#ifdef __linux__
   snprintf(ERROR_MSG, sizeof(ERROR_MSG), "Failed to terminate process %d", pid);
   return 1;
 #endif
 
-#ifndef LINUX_SUPPORT
+#ifndef __linux__
   mach_port_t task;
   kern_return_t kr;
 
